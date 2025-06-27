@@ -25,10 +25,9 @@ const SignupForm = () => {
     }
   };
 
-  // In your handleSubmit function in SignupForm.js
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validation = validatePassword(formData.password);
+    const validation = validatePassword(formData.password); 
     if (!validation.isValid) {
       setPasswordErrors(validation.errors);
       return;
