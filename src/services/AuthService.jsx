@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use the same port your backend is running on
-const API_URL = 'http://localhost:3000/api/auth'; 
+const API_URL = 'https://crop-connect-server.onrender.com'; 
 
 const api = axios.create({
   baseURL: API_URL,
