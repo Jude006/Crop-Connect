@@ -40,7 +40,7 @@ export const registerUser = async (userData) => {
 
 export const loginUser = async (credentials) => {
   try {
-    const response = await api.post('/login', credentials);
+    const response = await api.post('/api/auth/login', credentials);
       localStorage.setItem(
       "user",
       JSON.stringify({
