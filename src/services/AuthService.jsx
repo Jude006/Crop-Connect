@@ -31,7 +31,7 @@ export const registerUser = async (userData) => {
       errorMessage = error.response.data.message || 'Registration failed';
     } else if (error.request) {
       // Request was made but no response
-      errorMessage = 'Server not responding - please try again later';
+      errorMessage = 'Invalid credentials';
     }
     
     throw new Error(errorMessage);

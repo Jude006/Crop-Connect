@@ -1,300 +1,521 @@
-import React, { useContext } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
-  FaSearch,
-  FaShoppingCart,
-  FaStar,
-  FaLeaf,
-  FaFire,
-} from "react-icons/fa";
+  FiSearch,
+  FiShoppingCart,
+  FiHeart,
+  FiPackage,
+  FiStar,
+  FiClock,
+  FiTrendingUp,
+} from "react-icons/fi";
 import { motion } from "framer-motion";
-import { useAuth } from "../../context/AuthProvider";
-
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      duration: 0.5,
-      ease: "easeOut",
-    },
-  },
-};
-
-const cardHover = {
-  scale: 1.03,
-  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-  transition: {
-    duration: 0.3,
-  },
-};
+import { toast } from "react-toastify";
 
 const Overview = () => {
-const { user } = useAuth();
+  const [stats, setStats] = useState({
+    cartItems: 0,
+    favorites: 0,
+    recentOrders: 0,
+    totalSpent: 0,
+  });
+  const [products, setProducts] = useState([]);
+  const [recentProducts, setRecentProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+  // Create axios instance with auth header
+  const api = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+    },
+  });
 
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "Organic Tomatoes",
-      price: 1500,
-      farmer: "Green Valley Farms",
-      location: "Lagos",
-      rating: 4.5,
-      image:
-        "https://images.unsplash.com/photo-1447175008436-054170c2e979?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 2,
-      name: "Fresh Carrots",
-      price: 1200,
-      farmer: "Nature Roots",
-      location: "Abuja",
-      rating: 4.2,
-      image:
-        "https://images.unsplash.com/photo-1447175008436-054170c2e979?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 3,
-      name: "Premium Rice",
-      price: 25000,
-      farmer: "Golden Fields",
-      location: "Kano",
-      rating: 4.8,
-      image:
-        "https://images.unsplash.com/photo-1547496502-affa22d38842?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-    },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("authToken");
+          console.log('Current auth token:', token); // Debug
 
-  const recentOrders = [
-    {
-      id: 101,
-      product: "Organic Tomatoes",
-      date: "2023-05-15",
-      status: "Delivered",
-    },
-    {
-      id: 102,
-      product: "Fresh Carrots",
-      date: "2023-05-10",
-      status: "Shipped",
-    },
-  ];
+        // Public data
+        const productsRes = await axios.get(
+          `${API_BASE_URL}/api/products/public?limit=8`
+        );
+        setProducts(productsRes.data);
+
+        // Recently viewed
+        const recentlyViewed = JSON.parse(
+          localStorage.getItem("recentlyViewed") || "[]"
+        );
+        setRecentProducts(recentlyViewed.slice(0, 4));
+
+         if (token) {
+      try {
+        console.log('Making API requests with token:', token); // Debug log
+        const [cartRes, favoritesRes, ordersRes] = await Promise.all([
+          api.get("/api/cart").catch((err) => {
+            console.error('Cart error:', err);
+            return { data: { items: [] } };
+          }),
+          api.get("/api/favorites").catch((err) => {
+            console.error('Favorites error:', err);
+            return { data: [] };
+          }),
+          api.get("/api/orders/recent").catch((err) => {
+            console.error('Orders recent error:', err.response?.data || err);
+            return { 
+              data: { 
+                count: 0, 
+                totalSpent: 0,
+                success: false 
+              }
+            };
+          }),
+        ]);
+
+            // Ensure we use the data even if request failed
+            const ordersData = ordersRes.data.success
+              ? ordersRes.data
+              : {
+                  count: 0,
+                  totalSpent: 0,
+                };
+
+            setStats({
+              cartItems: cartRes.data.items?.length || 0,
+              favorites: favoritesRes.data.length || 0,
+              recentOrders: ordersData.count || 0,
+              totalSpent: ordersData.totalSpent || 0,
+            });
+          } catch (authError) {
+            console.log("Auth error:", authError);
+            // Set zeros if auth fails
+            setStats({
+              cartItems: 0,
+              favorites: 0,
+              recentOrders: 0,
+              totalSpent: 0,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const filteredProducts = products.filter((product) => {
+    return (
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.farmName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      navigate(
+        `/buyer-dashboard/products?search=${encodeURIComponent(searchTerm)}`
+      );
+    }
+  };
+
+  const addToCart = async (productId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        toast.error("Please login to add items to cart");
+        navigate("/login");
+        return;
+      }
+
+      await api.post("/api/cart/add", { productId, quantity: 1 });
+
+      // Update cart count
+      setStats((prev) => ({ ...prev, cartItems: prev.cartItems + 1 }));
+      toast.success("Item added to cart");
+    } catch (err) {
+      console.error("Failed to add to cart:", err);
+      toast.error(err.response?.data?.error || "Failed to add to cart");
+    }
+  };
+
+  const toggleFavorite = async (productId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        toast.error("Please login to manage favorites");
+        navigate("/login");
+        return;
+      }
+
+      // Check if product is already favorited
+      const isFav = await api.get(`/api/favorites/check/${productId}`);
+
+      if (isFav.data.isFavorite) {
+        await api.delete(`/api/favorites/${productId}`);
+        setStats((prev) => ({ ...prev, favorites: prev.favorites - 1 }));
+        toast.success("Removed from favorites");
+      } else {
+        await api.post(`/api/favorites/${productId}`);
+        setStats((prev) => ({ ...prev, favorites: prev.favorites + 1 }));
+        toast.success("Added to favorites");
+      }
+    } catch (err) {
+      console.error("Favorite error:", err);
+      toast.error(err.response?.data?.error || "Failed to update favorites");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      className="p-4 md:p-8  min-h-screen"
-    >
-      {/* Welcome Section */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2 font-clash">
-          Welcome back, {" "}
-          <span className="text-primary font-clash">
-            {user?.fullName || "Valued Customer"}
-          </span>
-        </h1>
-        <p className="text-gray-600 font-satoshi">
-          Discover the freshest farm products in your area
-        </p>
-      </motion.div>
+    <div className="bg-gray-50 min-h-screen pb-12">
+      {/* Header with Search */}
+      <div className="bg-white shadow-sm">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+                Welcome Back!
+              </h1>
+              <p className="text-gray-600">
+                Here's what's happening with your account today
+              </p>
+            </div>
+
+            <form onSubmit={handleSearch} className="w-full md:w-96">
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search products, farms, categories..."
+                  className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent shadow-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-2 bg-primary text-white px-3 py-1 rounded-md text-sm hover:bg-opacity-90 transition-all"
+                >
+                  Search
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
 
       {/* Stats Cards */}
-      <motion.div
-        variants={containerVariants}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-      >
-        <motion.div
-          variants={itemVariants}
-          whileHover={{ y: -5 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-primary transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-satoshi">Total Orders</p>
-              <p className="text-3xl font-bold font-clash text-gray-800">12</p>
-            </div>
-            <div className="bg-primary bg-opacity-10 p-3 rounded-full">
-              <FaShoppingCart className="text-primary text-xl" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          variants={itemVariants}
-          whileHover={{ y: -5 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-primary transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-satoshi">Cart Items</p>
-              <p className="text-3xl font-bold font-clash text-gray-800">3</p>
-            </div>
-            <div className="bg-primary bg-opacity-10 p-3 rounded-full">
-              <FaShoppingCart className="text-primary text-xl" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          variants={itemVariants}
-          whileHover={{ y: -5 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:border-primary transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-500 text-sm font-satoshi">Favorites</p>
-              <p className="text-3xl font-bold font-clash text-gray-800">5</p>
-            </div>
-            <div className="bg-primary bg-opacity-10 p-3 rounded-full">
-              <FaStar className="text-primary text-xl" />
-            </div>
-          </div>
-        </motion.div>
-      </motion.div>
-
-      {/* Search Bar */}
-      <motion.div variants={itemVariants} className="relative mb-8">
-        <input
-          type="text"
-          placeholder="Search for products, farms, or locations..."
-          className="w-full p-4 pl-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent font-satoshi shadow-sm transition-all duration-300 focus:shadow-md"
-        />
-        <FaSearch className="absolute left-4 top-4 text-gray-400" />
-      </motion.div>
-
-      {/* Featured Products */}
-      <motion.div variants={itemVariants} className="mb-12">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-gray-800 font-clash flex items-center gap-2">
-            <FaFire className="text-primary" /> Trending Products
-          </h2>
-          <Link
-            to="/buyer-dashboard/products"
-            className="text-primary hover:underline font-satoshi flex items-center gap-1"
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Cart Items Card */}
+          <motion.div
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer"
+            onClick={() => navigate("/buyer-dashboard/carts")}
           >
-            View all <span className="text-lg">→</span>
-          </Link>
-        </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500">Cart Items</p>
+                <h3 className="text-2xl font-bold mt-2">{stats.cartItems}</h3>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-full">
+                <FiShoppingCart className="text-blue-500 text-xl" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">
+              View and manage your cart
+            </p>
+          </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredProducts.map((product) => (
-            <motion.div
-              key={product.id}
-              variants={itemVariants}
-              whileHover={cardHover}
-              className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:border-primary transition-all duration-300"
+          {/* Favorites Card */}
+          <motion.div
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer"
+            onClick={() => navigate("/buyer-dashboard/favourites")}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500">Favorites</p>
+                <h3 className="text-2xl font-bold mt-2">{stats.favorites}</h3>
+              </div>
+              <div className="p-3 bg-red-50 rounded-full">
+                <FiHeart className="text-red-500 text-xl" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">View your saved items</p>
+          </motion.div>
+
+          {/* Recent Orders Card */}
+          <motion.div
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 cursor-pointer"
+            onClick={() => navigate("/buyer-dashboard/orders")}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500">Recent Orders</p>
+                <h3 className="text-2xl font-bold mt-2">
+                  {stats.recentOrders}
+                </h3>
+              </div>
+              <div className="p-3 bg-green-50 rounded-full">
+                <FiPackage className="text-green-500 text-xl" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">
+              Track your recent purchases
+            </p>
+          </motion.div>
+
+          {/* Total Spent Card */}
+          <motion.div
+            whileHover={{ y: -5 }}
+            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500">Total Spent</p>
+                <h3 className="text-2xl font-bold mt-2">
+                  ₦{stats.totalSpent.toLocaleString()}
+                </h3>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-full">
+                <FiTrendingUp className="text-purple-500 text-xl" />
+              </div>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">Your total purchases</p>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4">
+        {/* Recently Viewed Section */}
+        {recentProducts.length > 0 && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">
+                Recently Viewed
+              </h2>
+              <button
+                onClick={() => navigate("/buyer-dashboard/products")}
+                className="text-primary hover:underline"
+              >
+                View All
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recentProducts.map((product) => (
+                <motion.div
+                  key={product._id}
+                  whileHover={{ y: -5 }}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 cursor-pointer"
+                  onClick={() =>
+                    navigate(`/buyer-dashboard/products/${product._id}`)
+                  }
+                >
+                  <div className="relative h-48">
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      className="absolute top-2 right-2 bg-white/80 p-2 rounded-full hover:bg-white transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(product._id);
+                      }}
+                    >
+                      <FiHeart className="text-gray-600 hover:text-red-500" />
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg truncate">
+                      {product.name}
+                    </h3>
+                    <p className="text-primary font-bold mt-1">
+                      ₦{product.price.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {product.farmName}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Featured Products Section */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">
+              Featured Products
+            </h2>
+            <button
+              onClick={() => navigate("/buyer-dashboard/products")}
+              className="text-primary hover:underline"
             >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                />
-                <div className="absolute top-3 right-3 bg-white bg-opacity-90 px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
-                  <FaStar className="text-yellow-400" />
-                  <span>{product.rating}</span>
-                </div>
-              </div>
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-lg font-clash text-gray-800">
-                    {product.name}
-                  </h3>
-                  <span className="font-bold text-primary font-clash">
-                    ₦{product.price.toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-gray-500 text-sm mb-3 font-satoshi flex items-center">
-                  <FaLeaf className="inline mr-2 text-primary" />
-                  {product.farmer} • {product.location}
-                </p>
-                <div className="flex justify-between items-center">
-                  <button className="bg-primary text-white px-4 py-2 rounded-lg font-satoshi hover:bg-opacity-90 transition-all flex items-center gap-2">
-                    <FaShoppingCart /> Add to Cart
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+              View All
+            </button>
+          </div>
 
-      {/* Recent Orders */}
-      <motion.div variants={itemVariants}>
-        <h2 className="text-xl font-bold text-gray-800 mb-6 font-clash">
-          Recent Orders
-        </h2>
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-satoshi">
-                    Order ID
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-satoshi">
-                    Product
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-satoshi">
-                    Date
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider font-satoshi">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {recentOrders.map((order) => (
-                  <motion.tr
-                    key={order.id}
-                    whileHover={{ backgroundColor: "rgba(74, 222, 128, 0.05)" }}
-                    className="transition-colors duration-200"
+          {filteredProducts.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+              <FiPackage className="mx-auto text-4xl text-gray-400 mb-4" />
+              <p className="text-gray-600">
+                No products found matching your search
+              </p>
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  navigate("/buyer-dashboard/products");
+                }}
+                className="mt-4 bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-all"
+              >
+                Browse All Products
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {filteredProducts.map((product) => (
+                <motion.div
+                  key={product._id}
+                  whileHover={{ y: -5 }}
+                  className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100"
+                >
+                  <div
+                    className="relative h-48 cursor-pointer"
+                    onClick={() =>
+                      navigate(`/buyer-dashboard/products/${product._id}`)
+                    }
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-satoshi">
-                      #{order.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 font-clash">
-                      {order.product}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-satoshi">
-                      {order.date}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full font-satoshi ${
-                          order.status === "Delivered"
-                            ? "bg-green-100 text-green-800"
-                            : order.status === "Shipped"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {order.status}
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {product.isNew && (
+                      <span className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+                        New
                       </span>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                    <button
+                      className="absolute top-2 right-2 bg-white/80 p-2 rounded-full hover:bg-white transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(product._id);
+                      }}
+                    >
+                      <FiHeart className="text-gray-600 hover:text-red-500" />
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <h3
+                      className="font-semibold text-lg truncate cursor-pointer hover:text-primary"
+                      onClick={() =>
+                        navigate(`/buyer-dashboard/products/${product._id}`)
+                      }
+                    >
+                      {product.name}
+                    </h3>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-primary font-bold">
+                        ₦{product.price.toLocaleString()}
+                      </span>
+                      {product.rating && (
+                        <span className="flex items-center text-sm text-gray-600">
+                          <FiStar className="text-yellow-400 mr-1" />
+                          {product.rating.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {product.farmName}
+                    </p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(product._id);
+                      }}
+                      className="w-full mt-3 flex items-center justify-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-opacity-90 transition-all"
+                    >
+                      <FiShoppingCart /> Add to Cart
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              onClick={() => navigate("/buyer-dashboard/products")}
+            >
+              <FiPackage className="text-2xl text-primary mb-2" />
+              <span>Browse Products</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              onClick={() => navigate("/buyer-dashboard/cart")}
+            >
+              <FiShoppingCart className="text-2xl text-blue-500 mb-2" />
+              <span>View Cart</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              onClick={() => navigate("/buyer-dashboard/favorites")}
+            >
+              <FiHeart className="text-2xl text-red-500 mb-2" />
+              <span>Your Favorites</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              onClick={() => navigate("/buyer-dashboard/orders")}
+            >
+              <FiClock className="text-2xl text-green-500 mb-2" />
+              <span>Order History</span>
+            </motion.button>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 };
 
