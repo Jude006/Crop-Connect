@@ -22,57 +22,75 @@ const OrderConfirmation = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const [isTestPayment, setIsTestPayment] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  useEffect(() => {
-    // Check for test payment flag or payment error in location state
-    if (location.state) {
-      setIsTestPayment(location.state.testPayment || false);
-      setPaymentError(location.state.paymentError || null);
+  const verifyAndFetchOrder = async () => {
+  const token = localStorage.getItem("authToken");
+  
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reference = urlParams.get("reference");
+    const paymentSuccess = urlParams.get("payment_success");
+
+    if (reference && paymentSuccess === "true") {
+      try {
+        // Verify payment using the reference
+        const verification = await axios.get(
+          `${API_BASE_URL}/api/orders/verify-payment/${reference}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (verification.data.order) {
+          setOrder(verification.data.order);
+          return;
+        }
+      } catch (verifyError) {
+        console.error("Payment verification failed:", verifyError);
+        toast.warning(
+          verifyError.response?.data?.error || 
+          "Payment verification failed, showing order details"
+        );
+      }
     }
 
-    // First check if we have order data in state
+    // Regular order fetch
+    const res = await axios.get(`${API_BASE_URL}/api/orders/${orderId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setOrder(res.data);
+  } catch (err) {
+    console.error("Order fetch error:", err);
+    setError(err.response?.data?.error || "Failed to load order details");
+    toast.error(err.response?.data?.error || "Failed to load order details");
+  } finally {
+    setLoading(false);
+  }
+};
+  useEffect(() => {
+    console.log("Current auth token:", localStorage.getItem("authToken"));
+
+    // Check if we have order data in state first
     if (location.state?.order) {
       setOrder(location.state.order);
       setLoading(false);
       return;
     }
 
-    // If we have an orderId but no state data
-    if (orderId) {
-      const fetchOrder = async () => {
-        try {
-          const res = await axios.get(`${API_BASE_URL}/api/orders/${orderId}`, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-          });
-          
-          if (res.data) {
-            setOrder(res.data);
-          } else {
-            throw new Error("Order data not found");
-          }
-        } catch (err) {
-          console.error("Order fetch error:", err);
-          setError(err.response?.data?.error || "Failed to load order details");
-          toast.error("Failed to load order details");
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchOrder();
-      return;
+    // Check for payment error in state
+    if (location.state?.paymentError) {
+      setPaymentError(location.state.paymentError);
     }
 
-    // If no orderId and no state data
-    setError("No order specified");
-    toast.error("No order specified");
-    setLoading(false);
+    // Otherwise fetch from API
+    if (orderId) {
+      verifyAndFetchOrder();
+    } else {
+      setError("No order specified");
+      setLoading(false);
+    }
   }, [orderId, location.state]);
 
   if (loading) {
@@ -240,7 +258,10 @@ const OrderConfirmation = () => {
                 </div>
                 <div className="text-right">
                   <p className="font-medium">
-                    ₦{((item.priceAtPurchase || 0) * item.quantity).toLocaleString()}
+                    ₦
+                    {(
+                      (item.priceAtPurchase || 0) * item.quantity
+                    ).toLocaleString()}
                   </p>
                   <p className="text-sm text-gray-500">
                     ₦{(item.priceAtPurchase || 0).toLocaleString()} each
@@ -271,7 +292,8 @@ const OrderConfirmation = () => {
                       : "text-gray-600"
                   }`}
                 >
-                  {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                  {order.status?.charAt(0).toUpperCase() +
+                    order.status?.slice(1)}
                 </p>
               </div>
             </div>

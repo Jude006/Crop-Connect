@@ -7,8 +7,8 @@ import {
   FiHeart,
   FiPackage,
   FiStar,
-  FiClock,
   FiTrendingUp,
+  FiBell,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
@@ -38,79 +38,56 @@ const Overview = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem("authToken");
+    
+    // Public data
+    const productsRes = await axios.get(`${API_BASE_URL}/api/products/public?limit=8`);
+    setProducts(productsRes.data);
+
+    // Recently viewed
+    const recentlyViewed = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
+    setRecentProducts(recentlyViewed.slice(0, 4));
+
+    if (token) {
       try {
-        setLoading(true);
-        const token = localStorage.getItem("authToken");
-          console.log('Current auth token:', token); // Debug
-
-        // Public data
-        const productsRes = await axios.get(
-          `${API_BASE_URL}/api/products/public?limit=8`
-        );
-        setProducts(productsRes.data);
-
-        // Recently viewed
-        const recentlyViewed = JSON.parse(
-          localStorage.getItem("recentlyViewed") || "[]"
-        );
-        setRecentProducts(recentlyViewed.slice(0, 4));
-
-         if (token) {
-      try {
-        console.log('Making API requests with token:', token); // Debug log
-        const [cartRes, favoritesRes, ordersRes] = await Promise.all([
-          api.get("/api/cart").catch((err) => {
-            console.error('Cart error:', err);
-            return { data: { items: [] } };
-          }),
-          api.get("/api/favorites").catch((err) => {
-            console.error('Favorites error:', err);
-            return { data: [] };
-          }),
-          api.get("/api/orders/recent").catch((err) => {
-            console.error('Orders recent error:', err.response?.data || err);
+        // Add error handling for each request
+        const cartRes = await api.get('/api/cart').catch(() => ({ data: { items: [] }}));
+        const favoritesRes = await api.get('/api/favorites').catch(() => ({ data: [] }));
+        
+        // Modified orders request with better error handling
+        const ordersRes = await api.get('/api/orders/recent')
+          .then(res => res.data)
+          .catch(err => {
+            console.error('Orders error:', err.response?.data || err.message);
             return { 
-              data: { 
-                count: 0, 
-                totalSpent: 0,
-                success: false 
-              }
-            };
-          }),
-        ]);
-
-            // Ensure we use the data even if request failed
-            const ordersData = ordersRes.data.success
-              ? ordersRes.data
-              : {
-                  count: 0,
-                  totalSpent: 0,
-                };
-
-            setStats({
-              cartItems: cartRes.data.items?.length || 0,
-              favorites: favoritesRes.data.length || 0,
-              recentOrders: ordersData.count || 0,
-              totalSpent: ordersData.totalSpent || 0,
-            });
-          } catch (authError) {
-            console.log("Auth error:", authError);
-            // Set zeros if auth fails
-            setStats({
-              cartItems: 0,
-              favorites: 0,
-              recentOrders: 0,
+              count: 0,
               totalSpent: 0,
-            });
-          }
+              success: false
+            };
+          });
+
+        setStats({
+          cartItems: cartRes.data.items?.length || 0,
+          favorites: favoritesRes.data.length || 0,
+          recentOrders: ordersRes.count || 0,
+          totalSpent: ordersRes.totalSpent || 0
+        });
+      } catch (authError) {
+        console.error('Auth error:', authError);
+        if (authError.response?.status === 401) {
+          localStorage.removeItem("authToken");
         }
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        toast.error("Failed to load dashboard data");
-      } finally {
-        setLoading(false);
       }
-    };
+    }
+  } catch (err) {
+    console.error('Fetch error:', err);
+    toast.error("Failed to load dashboard data");
+  } finally {
+    setLoading(false);
+  }
+};
 
     fetchData();
   }, []);
@@ -507,10 +484,10 @@ const Overview = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              onClick={() => navigate("/buyer-dashboard/orders")}
+              onClick={() => navigate("/buyer-dashboard/notifications")}
             >
-              <FiClock className="text-2xl text-green-500 mb-2" />
-              <span>Order History</span>
+              <FiBell className="text-2xl text-green-500 mb-2" />
+              <span>Notifications</span>
             </motion.button>
           </div>
         </div>

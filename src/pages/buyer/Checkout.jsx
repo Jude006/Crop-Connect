@@ -126,51 +126,40 @@ const Checkout = () => {
         }
       );
 
+      const orderId = response.data.order._id;
+      const userData = JSON.parse(localStorage.getItem("user")); // Add this line
+
+      // In handlePlaceOrder function
       if (paymentMethod === "paystack") {
-        const userData = JSON.parse(localStorage.getItem("user"));
-        if (!userData) {
-          throw new Error("User not authenticated");
-        }
-
-        let userEmail = userData.email;
-
-        if (!userEmail || !userEmail.includes("@")) {
-          throw new Error("Please provide a valid email address");
-        }
-
-        const script = document.createElement("script");
-        script.src = "https://js.paystack.co/v1/inline.js";
-
-        script.onload = () => {
-          const handler = PaystackPop.setup({
-            key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-            email: userEmail,
-            amount: Math.round(response.data.order.totalPrice * 100),
-            currency: "NGN",
-            ref: `order_${response.data.order._id}`, // Use actual order ID
-            callback: (response) => {
-              console.log("Paystack callback received");
-              verifyPayment(response.reference);
-            },
-            onClose: function () {
-              console.log("Payment window closed");
-              if (!window.location.href.includes("order-confirm")) {
-                toast.info(
-                  "Payment window closed - you can complete payment later"
-                );
-                setOrderProcessing(false);
-              }
-            },
-          });
-          handler.openIframe();
-        };
-
-        document.body.appendChild(script);
+        const handler = PaystackPop.setup({
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+          email: userData.email,
+          amount: Math.round(response.data.order.totalPrice * 100),
+          currency: "NGN",
+          ref: `order_${orderId}`,
+          metadata: {
+            orderId: orderId, // Crucial: Send orderId in metadata
+            userId: userData._id,
+          },
+          callback: function (response) {
+            window.location.href = `${window.location.origin}/buyer-dashboard/order-confirm/${orderId}?payment_success=true&reference=${response.reference}`;
+          },
+          onClose: function () {
+            if (!window.location.href.includes("order-confirm")) {
+              toast.info(
+                "Payment window closed - you can complete payment later"
+              );
+              setOrderProcessing(false);
+            }
+          },
+        });
+        handler.openIframe();
       } else {
         // Handle other payment methods
         await clearCart();
-        navigate(`/buyer-dashboard/order-confirm/${verification.data.order._id}`, {
-          state: { order: response.data.order },
+        navigate(`/buyer-dashboard/order-confirm/${orderId}`, {
+          state: { order: response.data.order, paymentSuccess: true },
+          replace: true,
         });
       }
     } catch (error) {
@@ -180,52 +169,51 @@ const Checkout = () => {
     }
   };
 
- const verifyPayment = async (reference) => {
-  try {
-    console.log("Verifying payment with reference:", reference);
+  const verifyPayment = async (reference, orderId) => {
+    try {
+      console.log("Verifying payment with reference:", reference);
 
-    const verification = await axios.get(
-      `${API_BASE_URL}/api/orders/verify-payment/${reference}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
+      const verification = await axios.get(
+        `${API_BASE_URL}/api/orders/verify-payment/${reference}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        }
+      );
+
+      if (verification.data.success && verification.data.order) {
+        try {
+          await clearCart();
+        } catch (error) {
+          console.error("Error clearing cart:", error);
+        }
+
+        navigate(`/buyer-dashboard/order-confirm/${orderId}`, {
+          state: {
+            order: verification.data.order,
+            paymentSuccess: true,
+          },
+          replace: true,
+        });
+      } else {
+        navigate(`/buyer-dashboard/order-confirm/${orderId}`, {
+          state: {
+            paymentError:
+              verification.data?.message || "Payment verification failed",
+          },
+        });
       }
-    );
-
-    if (verification.data.success && verification.data.order) {
-      // Clear cart before navigation
-      try {
-        await clearCart();
-      } catch (error) {
-        console.error("Error clearing cart:", error);
-        // Don't block navigation if cart clearing fails
-      }
-
-      // Navigate to confirmation page with order data in state
-      navigate(`/buyer-dashboard/order-confirm/${verification.data.order._id}`, {
-        state: { 
-          order: verification.data.order,
-          paymentSuccess: true 
-        },
-        replace: true
-      });
-    } else {
-      navigate(`/buyer-dashboard/order-confirm`, {
+    } catch (error) {
+      console.error("Payment verification error:", error);
+      navigate(`/buyer-dashboard/order-confirm/${orderId}`, {
         state: {
-          paymentError: verification.data.message || "Payment verification failed",
+          paymentError:
+            error.response?.data?.message || "Payment processing error",
         },
       });
     }
-  } catch (error) {
-    console.error("Payment verification error:", error);
-    navigate(`/buyer-dashboard/order-confirm`, {
-      state: {
-        paymentError: error.response?.data?.message || "Payment processing error",
-      },
-    });
-  }
-};
+  };
 
   const calculateTotal = () => {
     return (
@@ -246,7 +234,6 @@ const Checkout = () => {
     );
   }
 
-  // Error state
   if (cartLoadingError) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -270,7 +257,6 @@ const Checkout = () => {
     );
   }
 
-  // Empty cart state
   if (cart.items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -288,7 +274,6 @@ const Checkout = () => {
     );
   }
 
-  // Main checkout UI
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex items-center mb-8">
@@ -299,7 +284,6 @@ const Checkout = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Checkout Steps */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="flex border-b">
@@ -530,7 +514,6 @@ const Checkout = () => {
           </div>
         </div>
 
-        {/* Order Summary */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl shadow-sm p-6 sticky top-4">
             <h2 className="text-xl font-bold mb-4">Order Summary</h2>

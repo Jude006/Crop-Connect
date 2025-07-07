@@ -9,7 +9,7 @@ import Settings from "../pages/buyer/Settings";
 import Favourites from "../pages/buyer/Favourites";
 import ProductDetail from "../pages/buyer/ProductDetails";
 import Checkout from "../pages/buyer/Checkout";
-import OrderConfirmation from "../pages/buyer/OrderConfirmation"; 
+import OrderConfirmation from "../pages/buyer/OrderConfirmation";
 
 const BuyerRoutes = () => {
   return (
