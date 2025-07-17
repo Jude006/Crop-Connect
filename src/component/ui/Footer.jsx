@@ -1,8 +1,24 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { FaLeaf, FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn, FaMapMarkerAlt, FaPhoneAlt, FaEnvelope } from 'react-icons/fa';
-
+import React from "react";
+import { motion } from "framer-motion";
+import {
+  FaLeaf,
+  FaFacebookF,
+  FaTwitter,
+  FaInstagram,
+  FaLinkedinIn,
+  FaMapMarkerAlt,
+  FaPhoneAlt,
+  FaEnvelope,
+} from "react-icons/fa";
+import { Link } from "react-router-dom";
 const Footer = () => {
+  const links = [
+    { label: "About Us", path: "/about" },
+    { label: "Pricing", path: "/pricing" },
+    { label: "Contact", path: "/contact" },
+    { label: "Faq", path: "/faq" },
+  ];
+
   return (
     <footer className="bg-background text-text pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -16,24 +32,29 @@ const Footer = () => {
             viewport={{ once: true }}
             className="space-y-4"
           >
-            <div className="flex items-center gap-2">
+            <Link to='/' className="flex items-center gap-2">
               <FaLeaf className="text-accent text-2xl" />
-              <span className="font-clash text-primary font-bold text-2xl">CropDirect</span>
-            </div>
+              <span className="font-clash text-primary font-bold text-2xl">
+                CropDirect
+              </span>
+            </Link>
             <p className="font-satoshi ">
-              Connecting Nigerian farmers directly with buyers for fairer prices and fresher produce.
+              Connecting Nigerian farmers directly with buyers for fairer prices
+              and fresher produce.
             </p>
             <div className="flex gap-4 pt-2">
-              {[FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn].map((Icon, index) => (
-                <motion.a
-                  key={index}
-                  whileHover={{ y: -3, scale: 1.1 }}
-                  href="#"
-                  className="bg-gray-800 hover:bg-accent w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-                >
-                  <Icon className="text-white text-sm" />
-                </motion.a>
-              ))}
+              {[FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn].map(
+                (Icon, index) => (
+                  <motion.a
+                    key={index}
+                    whileHover={{ y: -3, scale: 1.1 }}
+                    href="#"
+                    className="bg-gray-800 hover:bg-accent w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                  >
+                    <Icon className="text-white text-sm" />
+                  </motion.a>
+                )
+              )}
             </div>
           </motion.div>
 
@@ -45,16 +66,19 @@ const Footer = () => {
             viewport={{ once: true }}
           >
             <h3 className="font-clash font-bold text-lg mb-4">Quick Links</h3>
-            <ul className="space-y-3 font-satoshi ">
-              {['About Us', 'How It Works', 'Pricing', 'Blog'].map((item, index) => (
+            <ul className="space-y-3 font-satoshi">
+              {links.map((item, index) => (
                 <li key={index}>
-                  <a href="#" className="hover:text-accent transition-colors">{item}</a>
+                  <Link
+                    to={item.path}
+                    className="hover:text-accent transition-colors"
+                  >
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
           </motion.div>
-
-          {/* Products */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -63,11 +87,15 @@ const Footer = () => {
           >
             <h3 className="font-clash font-bold text-lg mb-4">Products</h3>
             <ul className="space-y-3 font-satoshi ">
-              {['Vegetables', 'Fruits', 'Grains', 'Livestock', 'Dairy'].map((item, index) => (
-                <li key={index}>
-                  <a href="#" className="hover:text-accent transition-colors">{item}</a>
-                </li>
-              ))}
+              {["Vegetables", "Fruits", "Grains", "Livestock", "Dairy"].map(
+                (item, index) => (
+                  <li key={index}>
+                    <a href="/buyer-dashboard/products" className="hover:text-accent transition-colors">
+                      {item}
+                    </a>
+                  </li>
+                )
+              )}
             </ul>
           </motion.div>
 
@@ -87,11 +115,21 @@ const Footer = () => {
               </div>
               <div className="flex items-center gap-3">
                 <FaPhoneAlt className="text-accent" />
-                <a href="tel:+2348123456789" className="hover:text-accent transition-colors">+234 8068078495</a>
+                <a
+                  href="tel:+2348123456789"
+                  className="hover:text-accent transition-colors"
+                >
+                  +234 8068078495
+                </a>
               </div>
               <div className="flex items-center gap-3">
                 <FaEnvelope className="text-accent" />
-                <a href="mailto:hello@cropdirect.ng" className="hover:text-accent transition-colors">@cropdirect.ng</a>
+                <a
+                  href="mailto:hello@cropdirect.ng"
+                  className="hover:text-accent transition-colors"
+                >
+                  @cropdirect.ng
+                </a>
               </div>
             </div>
           </motion.div>
@@ -119,9 +157,24 @@ const Footer = () => {
             viewport={{ once: true }}
             className="flex gap-6"
           >
-            <a href="#" className="font-satoshi text-gray-500 hover:text-accent text-sm transition-colors">Privacy Policy</a>
-            <a href="#" className="font-satoshi text-gray-500 hover:text-accent text-sm transition-colors">Terms of Service</a>
-            <a href="#" className="font-satoshi text-gray-500 hover:text-accent text-sm transition-colors">FAQ</a>
+            <a
+              href="/privacy"
+              className="font-satoshi text-gray-500 hover:text-accent text-sm transition-colors"
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="/terms"
+              className="font-satoshi text-gray-500 hover:text-accent text-sm transition-colors"
+            >
+              Terms of Service
+            </a>
+            <a
+              href="/faq"
+              className="font-satoshi text-gray-500 hover:text-accent text-sm transition-colors"
+            >
+              FAQ
+            </a>
           </motion.div>
         </div>
       </div>
@@ -129,4 +182,4 @@ const Footer = () => {
   );
 };
 
-export default Footer; 
+export default Footer;

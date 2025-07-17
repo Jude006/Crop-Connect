@@ -178,12 +178,10 @@ npm init -y
 npm install express mongoose jsonwebtoken bcrypt cors
 Start coding!
 
+
+
 Day 1: Set up auth (signup/login).
-
 Day 2: Farmer product listings.
-
 Day 3: Buyer marketplace + cart.
-
 Day 4: Paystack integration.
-
 Day 5: Order management.

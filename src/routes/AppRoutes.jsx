@@ -10,6 +10,9 @@ import AppLayout from "../layouts/AppLayout";
 import BuyerRoutes from "./BuyerRoutes";
 import ProtectedRoutes from "./ProtectedRoute";
 import FarmerRoutes from "./FarmerRoutes";
+import FAQPage from "../pages/FAQPage";
+import TermsOfServices from "../pages/TermsOfServices";
+import PrivacyPolicy from "../pages/PrivacyPolicy";
 
 const AppRoutes = () => {
   return (
@@ -20,6 +23,9 @@ const AppRoutes = () => {
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/terms" element={<TermsOfServices />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/auth/*" element={<AuthRoutes />} />
           <Route element={<ProtectedRoutes />} allowedRoles={["buyer"]}>
             <Route path="/buyer-dashboard/*" element={<BuyerRoutes />} />
